@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <ctime>
 #include <dbus/dbus.h>
 #include <iostream>
 #include <stdexcept>
@@ -7,6 +8,22 @@
 
 namespace
 {
+
+int GetCurrentHour()
+{
+    time_t rawtime;
+    struct tm * timeinfo;
+
+    std::time( &rawtime );
+    timeinfo = std::localtime( &rawtime );
+
+    if( nullptr == timeinfo )
+    {
+        throw std::runtime_error { "could not get current time" };
+    }
+
+    return timeinfo->tm_hour;
+}
 
 bool IsDesktopLocked()
 {
@@ -17,7 +34,7 @@ bool IsDesktopLocked()
     constexpr char dbusMethod[] { "IsLocked" };
 
     DBusMessage* msg {};
-    DBusMessageIter args;
+    DBusMessageIter args {};
     DBusConnection* conn {};
     ult::DBusError err;
     DBusPendingCall* pending {};
@@ -29,11 +46,11 @@ bool IsDesktopLocked()
     conn = dbus_bus_get( DBUS_BUS_SESSION, err );
     if ( err.IsError() )
     {
-        throw std::runtime_error { "dbus connection error: " + err.GetMessage() };
+        throw std::runtime_error { "failed to get dbus connection (" + err.GetMessage() + ")" };
     }
     if ( NULL == conn )
     {
-        throw std::runtime_error { "dbus connection error (NULL)" };
+        throw std::runtime_error { "failed to get dbus connection (NULL)" };
     }
 
     // request our name on the bus
@@ -108,11 +125,15 @@ int main( int argc, char** argv )
             IsDesktopLocked() ? "locked" : "active"
         };
         std::cout << "Unity session is " << msg << std::endl;
+
+        auto hour = GetCurrentHour();
+        // TODO
+
+        return 0;
     }
     catch ( std::exception& e )
     {
         std::cerr << "error: " << e.what() << std::endl;
     }
-
-    return 0;
+    return 1;
 }
